@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Billing Dashboard</title>
+</head>
+<body>
+  <p>
+    <a href="{% url 'export_statement_xlsx' %}">Download Statement (.xlsx)</a> |
+    <a href="{{ ezpigmy_portal_url|default:'https://ezpigmy.in/' }}" target="_blank" rel="noopener">EzPigmy</a>
+    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
+  </p>
+  <h2>Monthly Electricity Bills</h2>
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>Sl.No.</th>
+      <th>Receipt No.</th>
+      <th>Qtrs No.</th>
+      <th>RR No.</th>
+      <th>Billing Date</th>
+      <th>Current Reading</th>
+      <th>Previous Reading</th>
+      <th>Unit Consumed</th>
+      <th>Amount in Rs.</th>
+      <th>Other Charges</th>
+      <th>Total Amount in Rs.</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+    {% for bill in bills %}
+    <tr>
+      <td>{{ bill.sl_no }}</td>
+      <td>{{ bill.receipt_no }}</td>
+      <td>{{ bill.meter.qtrs_no }}</td>
+      <td>{{ bill.meter.rr_no }}</td>
+      <td>{{ bill.billing_date }}</td>
+      <td>{{ bill.current_reading }}</td>
+      <td>{{ bill.previous_reading }}</td>
+      <td>{{ bill.units_consumed }}</td>
+      <td>{{ bill.energy_charge }}</td>
+      <td>{{ bill.other_charges }}</td>
+      <td>{{ bill.total_amount }}</td>
+      <td>{{ bill.get_status_display }}</td>
+      <td>
+        <a href="{% url 'edit_bill' bill.id %}">Edit</a>
+        {% if bill.status != "APPROVED" %}
+        <form method="post" action="{% url 'approve_bill' bill.id %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit">Approve</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="13">No bills found. Add QuarterMeter and ElectricityBill records in /admin/.</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

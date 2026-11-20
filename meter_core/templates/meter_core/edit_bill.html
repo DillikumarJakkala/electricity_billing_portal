@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Bill #{{ bill.id }}</title>
+</head>
+<body>
+  <p>
+    <a href="{% url 'admin_dashboard' %}">Back to Admin Dashboard</a> |
+    <a href="{{ ezpigmy_portal_url|default:'https://ezpigmy.in/' }}" target="_blank" rel="noopener">EzPigmy</a>
+    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
+  </p>
+
+  <h2>Edit Electricity Bill ({{ bill.meter.qtrs_no }} - Receipt {{ bill.receipt_no }})</h2>
+
+  <form method="post" id="edit-bill-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save Changes</button>
+  </form>
+
+  <script>
+    (function () {
+      const dateInput = document.getElementById("id_billing_date");
+      const periodSelect = document.getElementById("id_billing_period");
+      const receiptChoice = document.getElementById("id_receipt_choice");
+      const receiptInput = document.getElementById("id_receipt_no");
+
+      const monthNames = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+
+      if (dateInput && periodSelect) {
+        dateInput.addEventListener("change", function () {
+          if (!this.value) return;
+          const parts = this.value.split("-"); // YYYY-MM-DD
+          if (parts.length === 3) {
+            const year = parts[0];
+            const mIdx = parseInt(parts[1], 10) - 1;
+            if (mIdx >= 0 && mIdx < 12) {
+              const targetPrefix = `${monthNames[mIdx]} ${year}`;
+              for (const opt of periodSelect.options) {
+                if (opt.value.includes(targetPrefix)) {
+                  periodSelect.value = opt.value;
+                  break;
+                }
+              }
+            }
+          }
+        });
+      }
+
+      if (receiptChoice && receiptInput) {
+        receiptChoice.addEventListener("change", function () {
+          if (this.value) {
+            receiptInput.value = this.value;
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
