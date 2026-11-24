@@ -58,5 +58,36 @@
     <tr><td colspan="13">No bills found. Add QuarterMeter and ElectricityBill records in /admin/.</td></tr>
     {% endfor %}
   </table>
+
+  <div style="margin-top: 24px; padding: 20px; border: 1px solid #d0d7de; border-radius: 8px; background: #f8fafc;">
+    <h3 style="margin-top: 0;">AI Bill &amp; Energy Advisor (Gemini)</h3>
+    <form method="post" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+      {% csrf_token %}
+      <select name="bill_id" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        {% for bill in bills %}
+          <option value="{{ bill.id }}" {% if bill.id == selected_bill_id %}selected{% endif %}>
+            {{ bill.meter.qtrs_no }} | {{ bill.billing_period|default:bill.receipt_no }} ({{ bill.units_consumed }} kWh - {{ bill.total_amount }})
+          </option>
+        {% endfor %}
+      </select>
+      <input
+        type="text"
+        name="ai_question"
+        value="{{ ai_question }}"
+        placeholder="Ask why your bill changed or how to reduce units..."
+        style="flex: 1; min-width: 240px; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;"
+      />
+      <button type="submit" name="ask_ai" value="1" style="padding: 8px 16px; border-radius: 6px; background: #2563eb; color: #fff; border: none; cursor: pointer;">
+        Ask AI
+      </button>
+    </form>
+
+    {% if ai_explanation %}
+      <div style="margin-top: 16px; padding: 14px; background: #ffffff; border-left: 4px solid #2563eb; border-radius: 4px;">
+        {{ ai_explanation|linebreaksbr }}
+      </div>
+    {% endif %}
+  </div>
+
 </body>
 </html>
