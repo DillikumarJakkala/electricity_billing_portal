@@ -144,6 +144,7 @@
   </style>
 </head>
 <body>
+<<<<<<< HEAD
   <div class="container">
     <div class="topbar">
       <div class="brand">
@@ -226,5 +227,81 @@
       </table>
     </div>
   </div>
+=======
+  <p>
+    <a href="{% url 'export_statement_xlsx' %}">Download Statement (.xlsx)</a> |
+    <a href="{{ ezpigmy_portal_url|default:'https://ezpigmy.in/' }}" target="_blank" rel="noopener">EzPigmy</a>
+    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
+  </p>
+  <h2>My Electricity Bills</h2>
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>Sl.No.</th>
+      <th>Receipt No.</th>
+      <th>Qtrs No.</th>
+      <th>RR No.</th>
+      <th>Billing Date</th>
+      <th>Current Reading</th>
+      <th>Previous Reading</th>
+      <th>Unit Consumed</th>
+      <th>Amount in Rs.</th>
+      <th>Other Charges</th>
+      <th>Total Amount in Rs.</th>
+      <th>Status</th>
+    </tr>
+    {% for bill in bills %}
+    <tr>
+      <td>{{ bill.sl_no }}</td>
+      <td>{{ bill.receipt_no }}</td>
+      <td>{{ bill.meter.qtrs_no }}</td>
+      <td>{{ bill.meter.rr_no }}</td>
+      <td>{{ bill.billing_date }}</td>
+      <td>{{ bill.current_reading }}</td>
+      <td>{{ bill.previous_reading }}</td>
+      <td>{{ bill.units_consumed }}</td>
+      <td>{{ bill.energy_charge }}</td>
+      <td>{{ bill.other_charges }}</td>
+      <td>{{ bill.total_amount }}</td>
+      <td>{{ bill.get_status_display }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="12">No bills assigned to your account yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <div style="margin-top: 24px; padding: 20px; border: 1px solid #d0d7de; border-radius: 8px; background: #f8fafc;">
+    <h3 style="margin-top: 0;">AI Bill &amp; Energy Advisor (Gemini)</h3>
+    <form method="post" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+      {% csrf_token %}
+      <select name="bill_id" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        {% for bill in bills %}
+          <option value="{{ bill.id }}" {% if bill.id == selected_bill_id %}selected{% endif %}>
+            {{ bill.meter.qtrs_no }} | {{ bill.billing_period|default:bill.receipt_no }} ({{ bill.units_consumed }} kWh - {{ bill.total_amount }})
+          </option>
+        {% endfor %}
+      </select>
+      <input
+        type="text"
+        name="ai_question"
+        value="{{ ai_question }}"
+        placeholder="Ask why your bill changed or how to reduce units..."
+        style="flex: 1; min-width: 240px; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;"
+      />
+      <button type="submit" name="ask_ai" value="1" style="padding: 8px 16px; border-radius: 6px; background: #2563eb; color: #fff; border: none; cursor: pointer;">
+        Ask AI
+      </button>
+    </form>
+
+    {% if ai_explanation %}
+      <div style="margin-top: 16px; padding: 14px; background: #ffffff; border-left: 4px solid #2563eb; border-radius: 4px;">
+        {{ ai_explanation|linebreaksbr }}
+      </div>
+    {% endif %}
+  </div>
+
+>>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
 </body>
 </html>
