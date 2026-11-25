@@ -2,61 +2,247 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Billing Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f3f6fb;
+      color: #1e293b;
+    }
+    .container {
+      max-width: 1280px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+    .topbar {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #0f172a;
+    }
+    .brand p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e2e8f0; color: #0f172a; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #16a34a; color: #fff; padding: 6px 10px; font-size: 12px; }
+    .btn-success:hover { background: #15803d; }
+    .btn-ai { background: #7c3aed; color: #fff; padding: 6px 10px; font-size: 12px; }
+    .btn-ai:hover { background: #6d28d9; }
+    .btn-edit { background: #0284c7; color: #fff; padding: 6px 10px; font-size: 12px; }
+    .btn-edit:hover { background: #0369a1; }
+    .btn-logout { background: #fee2e2; color: #b91c1c; }
+    .btn-logout:hover { background: #fecaca; }
+
+    .alert-err {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    .ai-card {
+      background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+      border: 1px solid #c7d2fe;
+      border-left: 5px solid #7c3aed;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 18px;
+      box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+      white-space: pre-line;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+    .ai-card-header {
+      font-weight: 700;
+      font-size: 15px;
+      color: #4338ca;
+      margin-bottom: 6px;
+    }
+
+    .table-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 18px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+      overflow-x: auto;
+    }
+    .table-card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      color: #0f172a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      text-align: left;
+      padding: 11px 10px;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #edf2f7;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tr:hover td { background: #f8fafc; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .badge-approved {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
 </head>
 <body>
-  <p>
-    <a href="{% url 'export_statement_xlsx' %}">Download Statement (.xlsx)</a> |
-    <a href="{{ ezpigmy_portal_url|default:'https://ezpigmy.in/' }}" target="_blank" rel="noopener">EzPigmy</a>
-    <form method="post" action="{% url 'logout' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit">Logout</button>
-    </form>
-  </p>
-  <h2>Monthly Electricity Bills</h2>
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>Sl.No.</th>
-      <th>Receipt No.</th>
-      <th>Qtrs No.</th>
-      <th>RR No.</th>
-      <th>Billing Date</th>
-      <th>Current Reading</th>
-      <th>Previous Reading</th>
-      <th>Unit Consumed</th>
-      <th>Amount in Rs.</th>
-      <th>Other Charges</th>
-      <th>Total Amount in Rs.</th>
-      <th>Status</th>
-      <th>Actions</th>
-    </tr>
-    {% for bill in bills %}
-    <tr>
-      <td>{{ bill.sl_no }}</td>
-      <td>{{ bill.receipt_no }}</td>
-      <td>{{ bill.meter.qtrs_no }}</td>
-      <td>{{ bill.meter.rr_no }}</td>
-      <td>{{ bill.billing_date }}</td>
-      <td>{{ bill.current_reading }}</td>
-      <td>{{ bill.previous_reading }}</td>
-      <td>{{ bill.units_consumed }}</td>
-      <td>{{ bill.energy_charge }}</td>
-      <td>{{ bill.other_charges }}</td>
-      <td>{{ bill.total_amount }}</td>
-      <td>{{ bill.get_status_display }}</td>
-      <td>
-        <a href="{% url 'edit_bill' bill.id %}">Edit</a>
-        {% if bill.status != "APPROVED" %}
-        <form method="post" action="{% url 'approve_bill' bill.id %}" style="display:inline;">
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Residential Electricity Billing — Admin</h1>
+        <p>QuarterMeter Slab Billing, Statement Export & Gemini AI Insights</p>
+      </div>
+      <div class="nav-actions">
+        <a class="btn btn-primary" href="{% url 'export_statement_xlsx' %}">Download Statement (.xlsx)</a>
+        <a class="btn btn-secondary" href="{{ ezpigmy_portal_url|default:'https://ezpigmy.in/' }}" target="_blank" rel="noopener">EzPigmy</a>
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
           {% csrf_token %}
-          <button type="submit">Approve</button>
+          <button type="submit" class="btn btn-logout">Logout</button>
         </form>
-        {% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="13">No bills found. Add QuarterMeter and ElectricityBill records in /admin/.</td></tr>
-    {% endfor %}
-  </table>
+      </div>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert-err">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if ai_insight %}
+      <div class="ai-card">
+        <div class="ai-card-header">✨ Gemini AI Bill Analysis (Bill #{{ ai_bill_id }})</div>
+        {{ ai_insight }}
+      </div>
+    {% endif %}
+
+    <div class="table-card">
+      <h2>Monthly Electricity Bills</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Sl.No.</th>
+            <th>Receipt No.</th>
+            <th>Qtrs No.</th>
+            <th>RR No.</th>
+            <th>Billing Date</th>
+            <th>Current Reading</th>
+            <th>Previous Reading</th>
+            <th>Unit Consumed</th>
+            <th>Amount in Rs.</th>
+            <th>Other Charges</th>
+            <th>Total Amount in Rs.</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bill in bills %}
+          <tr>
+            <td>{{ bill.sl_no }}</td>
+            <td>{{ bill.receipt_no }}</td>
+            <td>{{ bill.meter.qtrs_no }}</td>
+            <td>{{ bill.meter.rr_no }}</td>
+            <td>{{ bill.billing_date }}</td>
+            <td>{{ bill.current_reading }}</td>
+            <td>{{ bill.previous_reading }}</td>
+            <td>{{ bill.units_consumed }}</td>
+            <td>{{ bill.energy_charge }}</td>
+            <td>{{ bill.other_charges }}</td>
+            <td><strong>{{ bill.total_amount }}</strong></td>
+            <td>
+              <span class="badge {% if bill.status == 'APPROVED' %}badge-approved{% endif %}">
+                {{ bill.get_status_display }}
+              </span>
+            </td>
+            <td>
+              <div class="action-group">
+                <a class="btn btn-edit" href="{% url 'edit_bill' bill.id %}">Edit</a>
+                {% if bill.status != "APPROVED" %}
+                <form method="post" action="{% url 'approve_bill' bill.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success">Approve</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'analyze_bill_ai' bill.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-ai">AI Analyze</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="13">No bills found. Add QuarterMeter and ElectricityBill records in /admin/.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </body>
 </html>
