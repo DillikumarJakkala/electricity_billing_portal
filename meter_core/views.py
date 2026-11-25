@@ -147,7 +147,6 @@ def analyze_bill_ai_view(request, bill_id):
         "2. Consumption & Anomaly Check (normal vs. high usage)\n"
         "3. Two practical energy-saving tips for the resident."
     )
-
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
