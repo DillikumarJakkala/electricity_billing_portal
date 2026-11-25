@@ -1,8 +1,25 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import json
 import os
 import urllib.error
 import urllib.request
+
+from django.conf import settings
+
+
+def _get_api_key() -> str:
+    env_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    return str(getattr(settings, "GEMINI_API_KEY", "") or "").strip()
+
+
+def _get_model_name() -> str:
+    return (
+        os.environ.get("GEMINI_MODEL", "").strip()
+        or str(getattr(settings, "GEMINI_MODEL", "") or "").strip()
+        or "gemini-3.5-flash-lite"
+    )
 
 
 def _fallback_score_and_reason(bill) -> tuple[int, str]:
@@ -42,10 +59,11 @@ def _fallback_score_and_reason(bill) -> tuple[int, str]:
 
 
 def _gemini_score_and_reason(bill) -> tuple[int, str] | None:
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    api_key = _get_api_key()
     if not api_key:
         return None
 
+    model_name = _get_model_name()
     prompt = (
         "Score this electricity bill review priority from 1 (low) to 100 (urgent) "
         "based on high consumption, high daily average, high other charges, or pending status. "
@@ -58,8 +76,8 @@ def _gemini_score_and_reason(bill) -> tuple[int, str] | None:
     )
 
     url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={api_key}"
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model_name}:generateContent?key={api_key}"
     )
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -100,3 +118,58 @@ def get_ai_priority(bill) -> tuple[int, str]:
     if gemini_result:
         return gemini_result
     return _fallback_score_and_reason(bill)
+
+
+def check_bill_anomaly(bill) -> dict:
+    """Checks meter readings, billing days gap, and consumption spikes."""
+    flags = []
+    prev_r = Decimal(str(getattr(bill, "previous_reading", 0) or 0))
+    curr_r = Decimal(str(getattr(bill, "current_reading", 0) or 0))
+    units = Decimal(str(getattr(bill, "units_consumed", 0) or 0))
+    days = int(getattr(bill, "no_of_days", 0) or 0)
+
+    if curr_r < prev_r:
+        flags.append("Current reading is lower than previous reading (verify meter/rollover)")
+
+    if days > 0 and (days < 15 or days > 45):
+        flags.append(f"Unusual billing cycle length ({days} days)")
+
+    if days > 0 and (units / Decimal(days)) >= Decimal("10"):
+        flags.append("Sharp daily unit consumption spike — check meter & heavy loads")
+
+    return {
+        "has_anomaly": bool(flags),
+        "flags": flags,
+        "summary": "; ".join(flags) if flags else "No reading or cycle anomaly detected",
+    }
+
+
+def forecast_next_bill(meter) -> dict:
+    """Estimates next billing cycle units & slab energy charge from recent bills."""
+    two_dp = Decimal("0.01")
+    recent_bills = list(meter.bills.order_by("-id")[:3])
+    if not recent_bills:
+        return {
+            "estimated_units": Decimal("0.00"),
+            "estimated_energy_charge": Decimal("0.00"),
+            "note": "No previous bills available for forecast",
+        }
+
+    avg_units = (
+        sum(Decimal(str(b.units_consumed or 0)) for b in recent_bills)
+        / Decimal(len(recent_bills))
+    ).quantize(two_dp, rounding=ROUND_HALF_UP)
+
+    s1_units = min(avg_units, Decimal("100")).quantize(two_dp, rounding=ROUND_HALF_UP)
+    s2_units = max(avg_units - Decimal("100"), Decimal("0")).quantize(
+        two_dp, rounding=ROUND_HALF_UP
+    )
+    est_energy = (
+        (s1_units * Decimal("8.75")) + (s2_units * Decimal("10.75"))
+    ).quantize(two_dp, rounding=ROUND_HALF_UP)
+
+    return {
+        "estimated_units": avg_units,
+        "estimated_energy_charge": est_energy,
+        "note": f"Based on last {len(recent_bills)} bill(s) using 1-100 @ 8.75 & 101+ @ 10.75 slabs",
+    }

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.db.models import Case, When
-from .ai_helper import get_ai_priority
+from .ai_helper import check_bill_anomaly, get_ai_priority
 from .models import (
     ElectricityBill,
     QuarterMeter,
@@ -133,6 +133,7 @@ class ElectricityBillAdmin(admin.ModelAdmin):
         "units_consumed",
         "total_amount",
         "ai_priority_badge",
+        "anomaly_badge",
         "status",
     )
     list_filter = ("status", "meter__customer_type")
@@ -153,6 +154,13 @@ class ElectricityBillAdmin(admin.ModelAdmin):
         else:
             tag = "LOW"
         return f"{tag} ({score}) — {reason}"
+
+    @admin.display(description="Reading / Cycle Check")
+    def anomaly_badge(self, obj):
+        result = check_bill_anomaly(obj)
+        if result["has_anomaly"]:
+            return f"ALERT — {result['summary']}"
+        return "OK — Normal"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
