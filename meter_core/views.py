@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 import os
+import time
 
-=======
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,15 +8,18 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-<<<<<<< HEAD
 from google import genai
 
-=======
-from .ai_advisor import explain_bill_with_ai
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
 from .forms import ElectricityBillForm
 from .models import ElectricityBill
 from .utils import build_statement_workbook
+
+GEMINI_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+]
 
 
 def _is_billing_admin(user) -> bool:
@@ -34,45 +35,34 @@ def _portal_context(extra: dict | None = None) -> dict:
     return ctx
 
 
-<<<<<<< HEAD
 def _build_bill_summary_text(bill: ElectricityBill) -> str:
     details = [f"Bill ID: {bill.pk}", f"Meter: {bill.meter}"]
     for field in bill._meta.fields:
         if field.name not in ("id", "meter"):
             details.append(f"{field.verbose_name}: {getattr(bill, field.name)}")
     return "\n".join(details)
-=======
-def _handle_ai_request(request, bills_queryset):
-    ai_explanation = None
-    ai_question = ""
-    selected_bill_id = None
 
-    if request.method == "POST" and "ask_ai" in request.POST:
-        ai_question = request.POST.get("ai_question", "").strip()
-        bill_id = request.POST.get("bill_id")
-        target_bill = (
-            bills_queryset.filter(pk=bill_id).first()
-            if bill_id
-            else bills_queryset.first()
-        )
-        if target_bill:
-            selected_bill_id = target_bill.id
-            ai_explanation = explain_bill_with_ai(
-                customer_type=target_bill.meter.get_customer_type_display(),
-                billing_period=target_bill.billing_period or f"Receipt #{target_bill.receipt_no}",
-                units_consumed=float(target_bill.units_consumed),
-                total_amount=float(target_bill.total_amount),
-                user_question=ai_question,
-            )
-        else:
-            ai_explanation = "No billing record found to analyze."
 
-    return {
-        "ai_explanation": ai_explanation,
-        "ai_question": ai_question,
-        "selected_bill_id": selected_bill_id,
-    }
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
+def _generate_bill_insight(client: genai.Client, prompt: str) -> str:
+    last_error = None
+    for model_name in GEMINI_MODELS:
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                if response.text and response.text.strip():
+                    return response.text.strip()
+                raise RuntimeError("Empty response returned by Gemini model.")
+            except Exception as exc:
+                last_error = exc
+                err_str = str(exc)
+                if ("503" in err_str or "429" in err_str or "UNAVAILABLE" in err_str) and attempt == 0:
+                    time.sleep(1.5)
+                    continue
+                break
+    raise RuntimeError(f"All Gemini models unavailable; last error: {last_error}")
 
 
 @login_required
@@ -87,19 +77,14 @@ def admin_dashboard(request):
     if not _is_billing_admin(request.user):
         raise PermissionDenied("Admin access required.")
     bills = ElectricityBill.objects.select_related("meter").all()
-    ai_ctx = _handle_ai_request(request, bills)
     return render(
         request,
         "meter_core/admin_dashboard.html",
-<<<<<<< HEAD
         _portal_context({
             "bills": bills,
             "ai_insight": request.session.pop("ai_bill_insight", None),
             "ai_bill_id": request.session.pop("ai_bill_id", None),
         }),
-=======
-        _portal_context({"bills": bills, **ai_ctx}),
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
     )
 
 
@@ -108,19 +93,14 @@ def resident_dashboard(request):
     bills = ElectricityBill.objects.select_related("meter").filter(
         meter__resident=request.user
     )
-    ai_ctx = _handle_ai_request(request, bills)
     return render(
         request,
         "meter_core/resident_dashboard.html",
-<<<<<<< HEAD
         _portal_context({
             "bills": bills,
             "ai_insight": request.session.pop("ai_bill_insight", None),
             "ai_bill_id": request.session.pop("ai_bill_id", None),
         }),
-=======
-        _portal_context({"bills": bills, **ai_ctx}),
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
     )
 
 
@@ -162,6 +142,7 @@ def export_statement_xlsx(request):
         bills = ElectricityBill.objects.select_related("meter").filter(
             meter__resident=request.user
         )
+
     wb = build_statement_workbook(bills)
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -171,7 +152,6 @@ def export_statement_xlsx(request):
     )
     wb.save(response)
     return response
-<<<<<<< HEAD
 
 
 @require_POST
@@ -198,14 +178,9 @@ def analyze_bill_ai_view(request, bill_id):
         "3. Two practical energy-saving tips for the resident."
     )
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        request.session["ai_bill_insight"] = response.text
+        insight = _generate_bill_insight(client, prompt)
+        request.session["ai_bill_insight"] = insight
         request.session["ai_bill_id"] = bill.pk
     except Exception as exc:
         messages.error(request, f"AI analysis failed: {exc}")
     return redirect("role_root_redirect")
-=======
->>>>>>> 79414b599d69384e2121a687f36a6447a9eecffc
