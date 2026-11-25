@@ -1,72 +1,91 @@
+from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 from django.utils import timezone
 from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+
+
+def _format_billing_date(bill) -> str:
+    dt = getattr(bill, "reading_date", None) or getattr(bill, "updated_at", None)
+    if not dt:
+        return ""
+    if timezone.is_aware(dt):
+        dt = timezone.localtime(dt)
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def _format_duration(bill) -> str:
+    if hasattr(bill, "get_duration_display"):
+        return bill.get_duration_display()
+    return str(getattr(bill, "duration", "") or "")
+
+
+def _two_dp(val) -> float:
+    dec = Decimal(str(val if val is not None else "0.00")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    return float(dec)
 
 
 def build_statement_workbook(bills) -> bytes:
     wb = Workbook()
     ws = wb.active
-    ws.title = "Electricity Bills"
+    ws.title = "Electricity Statement"
 
     headers = [
-        "Sl. No",
-        "Receipt No",
-        "Quarter No",
-        "RR No",
-        "Customer Type",
-        "Address",
-        "Meter Constant",
+        "Sl.No.",
+        "Receipt No.",
+        "Qtrs No.",
+        "RR No.",
         "Billing Period",
-        "Duration Range",
-        "Days Used",
-        "Reading Date",
-        "Previous Reading",
+        "Duration",
+        "Billing Date",
         "Current Reading",
-        "Units Consumed",
-        "Energy Charge",
+        "Previous Reading",
+        "Unit Consumed",
+        "Amount in Rs.",
         "Other Charges",
-        "Round Off",
-        "Total Amount",
+        "Total Amount in Rs.",
         "Status",
-        "Updated At",
     ]
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
     ws.append(headers)
 
-    for bill in bills:
-        meter = bill.meter
-        reading_str = bill.reading_date.strftime("%Y-%m-%d") if bill.reading_date else ""
-        updated_str = (
-            timezone.localtime(bill.updated_at).strftime("%Y-%m-%d %H:%M")
-            if bill.updated_at
-            else ""
-        )
-        ws.append([
-            bill.sl_no,
-            bill.receipt_no,
-            meter.qtrs_no if meter else "",
-            meter.rr_no if meter else "",
-            meter.get_customer_type_display() if meter else "",
-            meter.address if meter else "",
-            float(meter.meter_constant) if meter and meter.meter_constant is not None else 1.0,
-            bill.billing_period or "",
-            bill.duration or "",
-            int(bill.usage_days or 0),
-            reading_str,
-            float(bill.previous_reading),
-            float(bill.current_reading),
-            float(bill.units_consumed),
-            float(bill.energy_charge),
-            float(bill.other_charges),
-            float(bill.round_off),
-            float(bill.total_amount),
-            bill.get_status_display(),
-            updated_str,
-        ])
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or "")) for cell in col)
-        col_letter = col[0].column_letter
-        ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
+    for bill in bills:
+        meter = getattr(bill, "meter", None)
+        ws.append(
+            [
+                getattr(bill, "sl_no", ""),
+                getattr(bill, "receipt_no", ""),
+                getattr(meter, "qtrs_no", ""),
+                getattr(meter, "rr_no", ""),
+                getattr(bill, "billing_period", "") or "",
+                _format_duration(bill),
+                _format_billing_date(bill),
+                _two_dp(getattr(bill, "current_reading", Decimal("0.00"))),
+                _two_dp(getattr(bill, "previous_reading", Decimal("0.00"))),
+                _two_dp(getattr(bill, "units_consumed", Decimal("0.00"))),
+                _two_dp(getattr(bill, "energy_charge", Decimal("0.00"))),
+                _two_dp(getattr(bill, "other_charges", Decimal("0.00"))),
+                _two_dp(getattr(bill, "total_amount", Decimal("0.00"))),
+                bill.get_status_display()
+                if hasattr(bill, "get_status_display")
+                else getattr(bill, "status", ""),
+            ]
+        )
+
+    for column_cells in ws.columns:
+        col_letter = column_cells[0].column_letter
+        max_len = max(len(str(c.value or "")) for c in column_cells)
+        ws.column_dimensions[col_letter].width = min(max(max_len + 4, 12), 34)
 
     output = BytesIO()
     wb.save(output)

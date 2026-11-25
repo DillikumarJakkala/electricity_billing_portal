@@ -150,7 +150,10 @@ def export_statement_xlsx(request):
     response["Content-Disposition"] = (
         'attachment; filename="electricity_bill_statement.xlsx"'
     )
-    wb.save(response)
+    if isinstance(wb, (bytes, bytearray, memoryview)):
+        response.write(bytes(wb))
+    else:
+        wb.save(response)
     return response
 
 
