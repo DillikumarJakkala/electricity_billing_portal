@@ -32,14 +32,18 @@ def parse_billing_period_dates(period_str):
     if not period_str:
         return None, None
     text = str(period_str).strip()
-    parts = re.split(r"\s*(?:to|-|–|—)\s*", text, maxsplit=1, flags=re.IGNORECASE)
+    parts = re.split(
+        r"\s+(?:to|–|—)\s+|\s+-\s+",
+        text,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )
     if len(parts) == 2:
         start_d = _to_date(parts[0])
         end_d = _to_date(parts[1])
         if start_d and end_d and end_d >= start_d:
             return start_d, end_d
     return None, None
-
 
 def calculate_days_from_period(period_str) -> int:
     start_d, end_d = parse_billing_period_dates(period_str)
