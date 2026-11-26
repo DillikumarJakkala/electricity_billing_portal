@@ -1,5 +1,7 @@
+import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
+
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -9,9 +11,13 @@ def _format_billing_date(bill) -> str:
     dt = getattr(bill, "reading_date", None) or getattr(bill, "updated_at", None)
     if not dt:
         return ""
-    if timezone.is_aware(dt):
-        dt = timezone.localtime(dt)
-    return dt.strftime("%Y-%m-%d %H:%M")
+    if isinstance(dt, datetime.datetime):
+        if timezone.is_aware(dt):
+            dt = timezone.localtime(dt)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    if isinstance(dt, datetime.date):
+        return dt.strftime("%Y-%m-%d")
+    return str(dt)
 
 
 def _format_duration(bill) -> str:

@@ -157,7 +157,7 @@
     <div class="topbar">
       <div class="brand">
         <h1>Residential Electricity Billing — Admin</h1>
-        <p>QuarterMeter Slab Billing, Statement Export &amp; Gemini AI Insights</p>
+        <p>QuarterMeter Slab Billing, Statement Export &amp; AI Bill Insights</p>
       </div>
       <div class="nav-actions">
         <a class="btn btn-primary" href="{% url 'export_statement_xlsx' %}">Download Statement (.xlsx)</a>
@@ -177,8 +177,8 @@
 
     {% if ai_insight %}
       <div class="ai-card">
-        <div class="ai-card-header">✨ Gemini AI Bill Analysis (Bill #{{ ai_bill_id }})</div>
-        {{ ai_insight }}
+        <div class="ai-card-header">AI Bill Insight (Bill #{{ ai_bill_id }}) — {{ ai_insight.source }}</div>
+        {{ ai_insight.summary }}
       </div>
     {% endif %}
 
@@ -191,7 +191,7 @@
             <th>Receipt No.</th>
             <th>Qtrs No.</th>
             <th>RR No.</th>
-            <th>Billing Date</th>
+            <th>Billing Date / Period</th>
             <th>Current Reading</th>
             <th>Previous Reading</th>
             <th>Unit Consumed</th>
@@ -209,7 +209,7 @@
             <td>{{ bill.receipt_no }}</td>
             <td>{{ bill.meter.qtrs_no }}</td>
             <td>{{ bill.meter.rr_no }}</td>
-            <td>{{ bill.billing_date }}</td>
+            <td>{{ bill.reading_date|default:bill.billing_period }}</td>
             <td>{{ bill.current_reading }}</td>
             <td>{{ bill.previous_reading }}</td>
             <td>{{ bill.units_consumed }}</td>

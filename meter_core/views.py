@@ -43,6 +43,31 @@ def _build_bill_summary_text(bill: ElectricityBill) -> str:
     return "\n".join(details)
 
 
+def _build_fallback_insight(bill: ElectricityBill) -> dict:
+    units = float(bill.units_consumed or 0)
+    total = float(bill.total_amount or 0)
+    period = bill.billing_period or f"Bill #{bill.pk}"
+    if units <= 100:
+        slab_note = "Usage is within 100 units (₹8.75/unit lower slab)."
+    else:
+        slab_note = (
+            "Usage crossed 100 units (₹10.75/unit higher slab); "
+            "trimming 15–20 units noticeably lowers the bill."
+        )
+    return {
+        "source": "fallback",
+        "summary": (
+            f"Bill #{bill.pk} ({period}): {units} units consumed, "
+            f"total ₹{total:.2f}. {slab_note}"
+        ),
+        "saving_tips": [
+            "Set AC between 24°C–26°C and use timer/eco mode.",
+            "Switch off heavy appliances when not in use.",
+            "Keep AC/fan filters clean and prefer LED lights.",
+        ],
+    }
+
+
 def _generate_bill_insight(client: genai.Client, prompt: str) -> str:
     last_error = None
     for model_name in GEMINI_MODELS:
@@ -164,9 +189,11 @@ def analyze_bill_ai_view(request, bill_id):
     if not _is_billing_admin(request.user) and bill.meter.resident != request.user:
         raise PermissionDenied("Not authorized to analyze this bill.")
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    request.session["ai_bill_id"] = bill.pk
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
-        messages.error(request, "GEMINI_API_KEY is missing in environment variables.")
+        request.session["ai_bill_insight"] = _build_fallback_insight(bill)
+        messages.warning(request, "GEMINI_API_KEY not set; showing local fallback bill insight.")
         return redirect("role_root_redirect")
 
     client = genai.Client(api_key=api_key)
@@ -181,9 +208,13 @@ def analyze_bill_ai_view(request, bill_id):
         "3. Two practical energy-saving tips for the resident."
     )
     try:
-        insight = _generate_bill_insight(client, prompt)
-        request.session["ai_bill_insight"] = insight
-        request.session["ai_bill_id"] = bill.pk
+        text_insight = _generate_bill_insight(client, prompt)
+        request.session["ai_bill_insight"] = {
+            "source": "gemini",
+            "summary": text_insight,
+            "saving_tips": [],
+        }
     except Exception as exc:
-        messages.error(request, f"AI analysis failed: {exc}")
+        request.session["ai_bill_insight"] = _build_fallback_insight(bill)
+        messages.warning(request, f"Gemini unavailable ({exc}); showing fallback bill insight.")
     return redirect("role_root_redirect")
